@@ -292,19 +292,19 @@ Deps.prototype.getTransforms = function (file, pkg, opts) {
     }
 };
 
-Deps.prototype.walk = function (id, parent, cb) {
+Deps.prototype.walk = function (target, parent, cb) {
     var self = this;
     var opts = self.options;
     this.pending ++;
     
     var rec = {};
-    if (typeof id === 'object') {
-        rec = copy(id);
+    if (typeof target === 'object') {
+        rec = copy(target);
         if (rec.entry === false) delete rec.entry;
-        id = rec.file || rec.id;
+        target = rec.file || rec.module;
     }
     
-    self.resolve(id, parent, function (err, file, pkg) {
+    self.resolve(target, parent, function (err, file, pkg) {
         if (rec.expose) {
             // Set options.expose to make the resolved pathname available to the
             // caller. They may or may not have requested it, but it's harmless
@@ -317,7 +317,7 @@ Deps.prototype.walk = function (id, parent, cb) {
             self.emit('package', pkg);
         }
         
-        if (opts.postFilter && !opts.postFilter(id, file, pkg)) {
+        if (opts.postFilter && !opts.postFilter(target, file, pkg)) {
             if (--self.pending === 0) self.push(null);
             return cb(null, undefined);
         }
@@ -333,7 +333,7 @@ Deps.prototype.walk = function (id, parent, cb) {
         }
         if (err && self.options.ignoreMissing) {
             if (--self.pending === 0) self.push(null);
-            self.emit('missing', id, parent);
+            self.emit('missing', target, parent);
             return cb && cb(null, undefined);
         }
         if (err) return self.emit('error', err);
@@ -355,9 +355,9 @@ Deps.prototype.walk = function (id, parent, cb) {
         var c = self.cache && self.cache[file];
         if (c) return fromDeps(file, c.source, c.package, Object.keys(c.deps));
         
-        self.readFile(file, id, pkg)
+        self.readFile(file, target, pkg)
             .pipe(self.getTransforms(file, pkg, {
-                builtin: has(parent.modules, id)
+                builtin: has(parent.modules, target)
             }))
             .pipe(concat(function (body) {
                 fromSource(body.toString('utf8'));
